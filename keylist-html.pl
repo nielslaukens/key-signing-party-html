@@ -18,9 +18,6 @@ if( @ARGV == 1 ) {
         $keyring = $ARGV[0];
 }
 
-use File::Temp qw/tempdir/;
-use HTML::Entities;
-use File::Basename;
 use lib dirname(__FILE__) . "/lib";
 use KeylistParseRaw;
 
@@ -32,8 +29,9 @@ if( $rv != 0 ) {
 	die "Usage: $0 keyring.gpg\n";
 }
 
-open my $keys_fh, "gpg --homedir \"$tempdir\" --list-keys --with-fingerprint --with-colons --fixed-list-mode |"
-        or die "Could not list keys";
+open my $keys_fh, "-|", 'gpg', '--homedir', $tempdir, '--list-keys',
+		'--with-fingerprint', '--with-colons', '--fixed-list-mode'
+	or die "Could not list keys";
 my @key = KeylistParseRaw::parse($keys_fh);
 
 sub epoch_to_date {
@@ -89,6 +87,9 @@ print <<'EOT';
 			padding: 4pt;
 		}
 		@media print { div.key {page-break-inside: avoid;} }
+		div.qr {
+			float: right;
+		}
 		div.num {
 			font-size: 130%;
 			display: inline-block;
@@ -121,6 +122,22 @@ EOT
 my $i = 1;
 for my $key (@key) {
 	print '<div class="key">';
+	my $qrcode = Imager::QRCode->new(
+		size          => 2,
+		margin        => 0,
+		version       => 0,
+		level         => 'L',
+		casesensitive => 0,
+		lightcolor    => Imager::Color->new(255, 255, 255),
+		darkcolor     => Imager::Color->new(0, 0, 0),
+	);
+	my $qr = $qrcode->plot($key->{fingerprint});
+	$qr = $qr->to_paletted({ make_colors => 'mono' });
+	my $qr_img;
+	$qr->write(data => \$qr_img, type => "bmp") or die $qr->errstr;
+
+	print "<div class=\"qr\"><img src=\"data:image/bmp;base64,",
+		encode_base64($qr_img), "\"/></div>\n";
 	print "<div class=\"num\">" . $i++ . "</div>";
 	printf "<div class=\"pub\">pub   %s%s%d/%s %s%s</div>\n",
 		$KeylistParseRaw::algo{ $key->{algo} },
