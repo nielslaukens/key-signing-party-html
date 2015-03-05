@@ -1,0 +1,11 @@
+HTML keylist generator
+----------------------
+
+This is a simple Perl script that renders a GnuPG keyring in to a keylist file
+in HTML. It attempts to reduce the number of UIDs by collapsing "identical"
+UIDs into 1 line. Currently, "identical" means the same UID after removing the
+email address and the comment.
+
+It looks for a file `keyring.gpg` in the current directory, or the file
+specified on the command line. It outputs the HTML to stdout, so be sure to
+redirect this!
